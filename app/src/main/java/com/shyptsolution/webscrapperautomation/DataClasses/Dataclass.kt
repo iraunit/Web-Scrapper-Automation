@@ -16,3 +16,7 @@ data class LinkedInCommentEntity(
     var email:String,
     var profileLink:String
 )
+
+data class allFilesEntity(
+    var name:String
+)
