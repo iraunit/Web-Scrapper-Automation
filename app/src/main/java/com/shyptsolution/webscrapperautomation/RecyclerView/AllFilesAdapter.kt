@@ -13,15 +13,15 @@ import com.shyptsolution.webscrapperautomation.DataClasses.ScrapEntity
 import com.shyptsolution.webscrapperautomation.R
 import com.squareup.picasso.Picasso
 
-class HomeAdapter(var listOfAutomation:ArrayList<ScrapEntity>, var context:Context):RecyclerView.Adapter<HomeAdapter.ViewHolder>() {
+class AllFilesAdapter(var listOfAutomation:ArrayList<ScrapEntity>, var context: Context): RecyclerView.Adapter<AllFilesAdapter.ViewHolder>() {
 
-    class ViewHolder(itemView: View):RecyclerView.ViewHolder(itemView){
+    class ViewHolder(itemView: View): RecyclerView.ViewHolder(itemView){
         val image = itemView.findViewById<ImageView>(R.id.imageView)
         val title = itemView.findViewById<TextView>(R.id.textView)
         val card = itemView.findViewById<CardView>(R.id.cardView)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): HomeAdapter.ViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val itemView =
             LayoutInflater.from(parent.context)
                 .inflate(R.layout.home_row_layout, parent, false)

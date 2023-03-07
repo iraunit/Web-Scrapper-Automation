@@ -5,19 +5,20 @@ import android.util.Log
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.aspose.cells.PdfCompliance
+import com.aspose.cells.PdfSaveOptions
+import com.aspose.cells.SaveFormat
+import com.aspose.cells.Workbook
+import com.google.android.material.textfield.TextInputEditText
 import com.shyptsolution.webscrapperautomation.DataClasses.LinkedInCommentEntity
 import com.shyptsolution.webscrapperautomation.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import org.apache.commons.codec.DecoderException
+import kotlinx.coroutines.*
 import org.apache.poi.ss.usermodel.*
 import org.apache.poi.ss.util.CellRangeAddress
 import org.apache.poi.xssf.usermodel.IndexedColorMap
 import org.apache.poi.xssf.usermodel.XSSFColor
-import org.apache.poi.xssf.usermodel.XSSFSheet
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.*
 
@@ -42,10 +43,11 @@ class ScrapLinkedInComments : AppCompatActivity() {
     companion object {
         var currComments = 0
         var totalComments = Int.MAX_VALUE
-        lateinit var allCommentsList:ArrayList<LinkedInCommentEntity>
+        lateinit var allCommentsList: ArrayList<LinkedInCommentEntity>
         var fileName = "www.codingkaro.in"
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scrap_linked_in_comments)
@@ -53,29 +55,20 @@ class ScrapLinkedInComments : AppCompatActivity() {
         val wv = findViewById<WebView>(R.id.webView)
         wv.settings.javaScriptEnabled = true
         wv.settings.domStorageEnabled = true
-        wv.settings.loadsImagesAutomatically=false
-        wv.settings.blockNetworkImage=true
+        wv.settings.loadsImagesAutomatically = false
+        wv.settings.blockNetworkImage = true
         WebView.setWebContentsDebuggingEnabled(true)
-        val url = "https://www.linkedin.com/posts/love-babbar-38ab2887_socialmedia-students-mentalhealth-activity-7038479013845053440-EfA1?utm_source=share&utm_medium=member_desktop"
-            wv.addJavascriptInterface(MyInterface(), "HtmlHandler")
-//        val document: Document = Jsoup.connect(url).get()
-////        document.getElementsByClass("")[0]
-//        Toast.makeText(this,document.title(),Toast.LENGTH_LONG).show()
+        val url = "https://www.codingkaro.in/"
+        wv.addJavascriptInterface(MyInterface(), "HtmlHandler")
         wv.loadUrl(url)
         val btn = findViewById<Button>(R.id.button)
         setDesktopMode(wv, true)
-
+        Toast.makeText(this,"Please Login First if you haven't done it yet.",Toast.LENGTH_LONG).show()
         btn.setOnClickListener {
-//            val f = File(this.filesDir,"file.csv")
-//            val workbook = Workbook()
-//            workbook.worksheets[0].cells["A1"].putValue("Hello World!")
-//            workbook.save(this.filesDir.toString()+"Excel.xlsx")
-//            workbook.worksheets.removeAt(1)
-//            workbook.save(this.filesDir.toString()+"Excel.xlsx")
-//            val fw = FileWriter(f)
-//            wv.evaluateJavascript("document.getElementsByClassName('comments-comments-list__load-more-comments-button')[0].click();",null)
+            wv.loadUrl(findViewById<TextInputEditText>(R.id.linkedInPostLinkTV).text.toString())
             GlobalScope.launch(Dispatchers.IO) {
-                withContext(Dispatchers.Main){
+                Thread.sleep(10000)
+                withContext(Dispatchers.Main) {
                     wv.loadUrl(
                         "javascript:window.HtmlHandler.getTotalComments" +
                                 "('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');"
@@ -85,7 +78,7 @@ class ScrapLinkedInComments : AppCompatActivity() {
                 var cnt = 0
                 var prev = 0
                 while (cnt < 10 && currComments < totalComments) {
-                    if(prev == currComments)cnt++
+                    if (prev == currComments) cnt++
                     else cnt = 0
                     withContext(Dispatchers.Main) {
                         wv.loadUrl(
@@ -93,7 +86,7 @@ class ScrapLinkedInComments : AppCompatActivity() {
                                     "l=document.getElementsByClassName('comments-comments-list__load-more-comments-button');" +
                                     "e=document.createEvent('HTMLEvents');" +
                                     "e.initEvent('click',true,true);" +
-                                    "if(l.length>0)"+
+                                    "if(l.length>0)" +
                                     "l[0].dispatchEvent(e);" +
                                     "})()"
                         )
@@ -102,31 +95,35 @@ class ScrapLinkedInComments : AppCompatActivity() {
                                     "('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');"
                         )
                         prev = currComments
+                        Toast.makeText(this@ScrapLinkedInComments,"Total Comments Loaded is : $currComments",Toast.LENGTH_LONG).show()
                     }
                     Thread.sleep(5000)
                     Log.d("HTML", "Loaded Comments Count is $currComments")
                     cnt++
                 }
 
-                withContext(Dispatchers.Main){
+                withContext(Dispatchers.Main) {
                     wv.loadUrl(
                         "javascript:window.HtmlHandler.getAllComments" +
                                 "('<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>');"
                     )
                     createExcel(createWorkbook())
+                    val options = PdfSaveOptions()
+                    options.compliance = PdfCompliance.PDF_A_1_A
+                    options.onePagePerSheet=true
+                    val wb = Workbook(this@ScrapLinkedInComments.filesDir.absolutePath+"/"+ fileName+".xlsx")
+                    wb.save(this@ScrapLinkedInComments.filesDir.absolutePath+"/"+ fileName+".pdf",options)
+                    Toast.makeText(this@ScrapLinkedInComments,"All comments have been downloaded. Check All Files.",Toast.LENGTH_LONG).show()
                 }
-//                fw.write(sw.toString())
-//                fw.close()
             }
 
         }
 
-        wv.setWebViewClient(object : WebViewClient() {
+        wv.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                //view.loadUrl(url);
                 return false
             }
-        })
+        }
         wv.loadUrl(url)
     }
 
@@ -158,12 +155,12 @@ class ScrapLinkedInComments : AppCompatActivity() {
     private fun createWorkbook(): XSSFWorkbook {
         val workbook = XSSFWorkbook()
         val sheet: Sheet = workbook.createSheet("Shypt Solution")
-        sheet.addMergedRegion(CellRangeAddress(0,0,0,4))
+        sheet.addMergedRegion(CellRangeAddress(0, 0, 0, 4))
         createSheetHeader(getHeaderStyle(workbook), sheet)
-        createShyptSolutionHeader(getShyptSolutionHeader(workbook),sheet)
-        sheet.createFreezePane(0,2)
+        createShyptSolutionHeader(getShyptSolutionHeader(workbook), sheet)
+        sheet.createFreezePane(0, 2)
         sheet.protectSheet("donate_to_shypt_solution")
-        addData(sheet, allCommentsList,workbook)
+        addData(sheet, allCommentsList, workbook)
         return workbook
     }
 
@@ -193,30 +190,34 @@ class ScrapLinkedInComments : AppCompatActivity() {
         color = XSSFColor(IndexedColors.WHITE, colorMap).indexed
         whiteFont.color = color
         whiteFont.bold = true
-        cellStyle.locked=true
+        cellStyle.locked = true
         cellStyle.setFont(whiteFont)
         return cellStyle
     }
 
 
-    private fun addData(sheet: Sheet,listOfComments:ArrayList<LinkedInCommentEntity>,wb:XSSFWorkbook) {
+    private fun addData(
+        sheet: Sheet,
+        listOfComments: ArrayList<LinkedInCommentEntity>,
+        wb: XSSFWorkbook
+    ) {
         val unlockedCellStyle: CellStyle = wb.createCellStyle()
         unlockedCellStyle.locked = false
-        for(i in 0 until listOfComments.size){
-            val current=listOfComments[i]
-            val row = sheet.createRow(i+2)
-            row.rowStyle=unlockedCellStyle
-            createUnlockedCell(row, 0, current.name,wb)
-            createUnlockedCell(row, 1, current.headline,wb)
-            createUnlockedCell(row, 2, current.profileLink,wb)
-            createUnlockedCell(row, 3, current.comment,wb)
-            createUnlockedCell(row, 4, current.email,wb)
+        for (i in 0 until listOfComments.size) {
+            val current = listOfComments[i]
+            val row = sheet.createRow(i + 2)
+            row.rowStyle = unlockedCellStyle
+            createUnlockedCell(row, 0, current.name, wb)
+            createUnlockedCell(row, 1, current.headline, wb)
+            createUnlockedCell(row, 2, current.profileLink, wb)
+            createUnlockedCell(row, 3, current.comment, wb)
+            createUnlockedCell(row, 4, current.email, wb)
         }
     }
 
     private fun createSheetHeader(cellStyle: CellStyle, sheet: Sheet) {
         val row = sheet.createRow(1)
-        val HEADER_LIST = listOf("Name", "Headline", "Profile Link","Comment","Email Found")
+        val HEADER_LIST = listOf("Name", "Headline", "Profile Link", "Comment", "Email Found")
         for ((index, value) in HEADER_LIST.withIndex()) {
             val columnWidth = (15 * 500)
             sheet.setColumnWidth(index, columnWidth)
@@ -243,12 +244,12 @@ class ScrapLinkedInComments : AppCompatActivity() {
         cell?.setCellValue(value)
     }
 
-    private fun createUnlockedCell(row: Row, columnIndex: Int, value: String?,wb:XSSFWorkbook) {
+    private fun createUnlockedCell(row: Row, columnIndex: Int, value: String?, wb: XSSFWorkbook) {
         val unlockedCellStyle: CellStyle = wb.createCellStyle()
         unlockedCellStyle.locked = false
         val cell = row.createCell(columnIndex)
         cell?.setCellValue(value)
-        cell.cellStyle=unlockedCellStyle
+        cell.cellStyle = unlockedCellStyle
     }
 
     private fun createExcel(workbook: XSSFWorkbook) {
@@ -257,7 +258,7 @@ class ScrapLinkedInComments : AppCompatActivity() {
             val fileOut = FileOutputStream(excelFile)
             workbook.write(fileOut)
             fileOut.close()
-            Log.d("HTML","Writing Done")
+            Log.d("HTML", "Writing Done")
         } catch (e: FileNotFoundException) {
             e.printStackTrace()
         } catch (e: IOException) {
